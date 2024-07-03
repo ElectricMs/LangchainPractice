@@ -1,5 +1,16 @@
-import os
+from dotenv import load_dotenv
+print(load_dotenv())
+
 from langchain_openai import ChatOpenAI
+chat_model=ChatOpenAI(
+    model="glm-4",
+    openai_api_base="https://open.bigmodel.cn/api/paas/v4/",
+    temperature=0.5,
+    streaming=True
+)
+
+from langchain.schema import HumanMessage
+from langchain.schema import SystemMessage
 from langchain.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
@@ -8,15 +19,7 @@ from langchain.prompts import (
 )
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
-from dotenv import load_dotenv
-print(load_dotenv())
 
-llm = ChatOpenAI(
-    temperature=0.95,
-    model="glm-4",
-    openai_api_base="https://open.bigmodel.cn/api/paas/v4/",
-    #stream=True
-)
 prompt = ChatPromptTemplate(
     messages=[
         SystemMessagePromptTemplate.from_template(
@@ -35,33 +38,25 @@ prompt = ChatPromptTemplate(
 
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-# 使用RunnableSequence来构建链
-chain = prompt | llm
-
-while True:
-    user_input = input("You: ")
-    if user_input.lower() == 'exit':
-        break
-    print("chat_history : ")
-    for key, value in memory.load_memory_variables({}).items():
-        print(f"{key}: {value}")
-    
-    response = chain.invoke({"question": user_input, "chat_history": memory.load_memory_variables({})["chat_history"]})
-    print(f"Chatbot: {response.content}")
-
-"""
 conversation = LLMChain(
-    llm=llm,
+    llm=chat_model,
     prompt=prompt,
-    #verbose=True,
+    verbose=True,
     memory=memory
 )
-
+print("ok")
 while True:
     user_input = input("You: ")
     if user_input.lower() == 'exit':
         break
-    response = conversation.invoke({"question": user_input})
-    print(f"Chatbot: {response}")
-    
-"""
+    response_iter = conversation.stream([SystemMessage(content=memory.load_memory_variables({})["chat_history"]), HumanMessage(content=user_input)])
+    # 遍历迭代器，逐段处理响应
+    for chunk in response_iter:
+        print(chunk, end='', flush=True)    
+    print()
+
+
+
+
+
+
